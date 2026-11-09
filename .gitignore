@@ -8,6 +8,7 @@ Thumbs.db
 
 # 只给本机 Cursor 技能看，不进仓库
 docs/agents/
+.cursor/
 
 # 本地草稿，不进仓库
 scripts/tmp-*.mjs
@@ -32,3 +33,4 @@ default-prompt-inject.md
 /official-harness-payload.7z
 *.asar
 *.asar.bak
+*.bak

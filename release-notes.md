@@ -1,3 +1,243 @@
+# 1.1.88
+
+## 中文
+
+- 版本 **1.1.88**。
+- **双版本适配（rc.2 + rc.5）**：#32/#36/#50/#53/#57/#62 在 0.2.1-rc.2 与 0.2.1-rc.5 上都能命中。旧 pattern 全部保留，rc.5 的新 pattern 追加，不再用新文案覆盖旧版。
+- **#36 升级字段**：bash/pwsh 的 `sandbox_permissions` justification 描述一并清洗；补上 `Approval is auto-granted.` 大写 marker，tool-fs 不再因为大小写差异永远漂移。
+- **#50 跨会话引用**：去掉 untrusted / “不要跟随指令”话术，保留只读快照的事实描述。
+- **#57 developer role**：rc.5 responses 通路的 `instructionRole` 分支纳入 openai/azure 白名单。
+- **#62 审批 fail-open**：rc.5 的 `void 0` 分支（无 approval 服务 / 无 agent / unavailable）全部放行；已打过旧 approval 分支的文件不会因 marker 被整条跳过。
+- **#32 / #53 状态标记**：#53 不再共用 #32 的注释 marker，旧宿主不会假绿；rc.5 残留的 `local web GUI` 前缀与 `DeepSeek Harness Web GUI` 描述已清掉。
+- **宿主门禁**：`package.json` 增加 `dshTargets`，状态页同时接受 rc.2 与 rc.5。
+- **验证**：web + desktop 双宿主 73/85 applied、0 pending、0 drifted；沙箱 42 个目标文件 apply/revert 字节级还原通过。
+
+## English
+
+- **1.1.88**.
+- **Dual-version support (rc.2 + rc.5)**: patches #32/#36/#50/#53/#57/#62 now match both 0.2.1-rc.2 and 0.2.1-rc.5. Old patterns are kept; rc.5 patterns are added instead of replacing them.
+- **#36 escalation schema**: also neutralizes the bash/pwsh `sandbox_permissions` justification text; adds the capitalised `Approval is auto-granted.` marker so tool-fs no longer drifts on case alone.
+- **#50 session references**: drops untrusted / "do not follow instructions" framing while keeping the read-only snapshot wording.
+- **#57 developer role**: the rc.5 `instructionRole` responses branch is included in the openai/azure allowlist.
+- **#62 approval fail-open**: rc.5 `void 0` branches (no approval service / no agent / unavailable) all allow; files already stamped by the old approval branch are re-processed instead of skipped.
+- **#32 / #53 markers**: #53 no longer shares #32's comment marker, so older hosts cannot show a false green; rc.5 leftovers (`local web GUI` prefix and `DeepSeek Harness Web GUI` description) are removed.
+- **Host gate**: `package.json` gains `dshTargets`, and the status page accepts both rc.2 and rc.5.
+- **Verified**: on both web and desktop hosts, 73/85 applied, 0 pending, 0 drifted; sandbox apply/revert restored all 42 target files byte-for-byte.
+
+# 1.1.87
+
+## 中文
+
+- 版本 **1.1.87**。
+- **回滚 / 备份加固**：
+  - 0 字节的 `.dshpurge.bak` 不再被当成"原版"写回宿主：`revertAll` / `restoreFromBak` 遇到空备份会改名为 `.bad` 并跳过，下次启动顺手清掉残骸。
+  - 宿主升级后刷新过期 bak 时补上单数 `marker` 的补丁（#6/#7/#8/#10），不再漏掉这些基线，避免旧 bak 覆盖新版文件导致新旧代码混合。
+  - 备份、配置、状态、覆盖文件统一走原子写（临时文件 + fsync + rename），断电或进程被杀不会留下半截文件。
+- **补丁命中契约**：标记 `optional` 的补丁命中数不符时记为软失败，不再阻断整体应用；#42 的两处插入型替换加探针，重复应用不会二次插入。
+- **桌面 / 进程（Windows）**：
+  - 进程枚举改用 `|` 分隔并强制 UTF-8 输出，修复中文安装路径下换包时旧进程杀不掉的问题。
+  - helper 只有在确实拿到 exe 路径时才带 `killApp`；换包失败会把原版重新拉起并写日志，不再留空桌面。
+- **安全加固**：
+  - asar 解包校验输出路径必须位于目标目录内，越界条目跳过并告警。
+  - 红队文件读写路径校验对最近存在的祖先做 `realpath`，堵住 symlink 逃逸。
+  - 更新检查只允许 `https`。
+  - 报告回放生成的 curl / HTTP 报文对头部、Cookie、请求体去除换行，防注入。
+- **提示词 / 运行钩子**：插件停用后 `rewriteFn` 直接返回宿主原始装配文本，不再残留注入；停用时清理 assemble guard；运行时缓存签名纳入红队设置、策略与 override 版本，状态变化立即生效。
+- **红队演练台**：`listEngagements` 默认不再逐条统计；漏洞列表与报告支持 `evidenceLimit`，大证据不再拖慢面板。
+- **子代理**：名额占位改为立即占用（`n+1`），append 失败时回退，避免并发派出超限。
+- **CLI**：`--apply` 存在失败项时以退出码 1 结束，脚本调用能感知失败。
+- **清理**：删除无引用的 `lib/mnemon-settings.js` 及 13 处死代码 / 未使用的 import；移除 `test/` 目录与 `test` 脚本，发布 CI 只做语法检查。
+
+## English
+
+- **1.1.87**.
+- **Rollback / backup hardening**:
+  - A zero-byte `.dshpurge.bak` is no longer treated as the original and written back to the host: `revertAll` / `restoreFromBak` rename it to `.bad` and skip it; leftovers are swept on the next start.
+  - When refreshing stale backups after a host upgrade, patches that use the singular `marker` form (#6/#7/#8/#10) are now included, so their baseline is not missed and an old backup can no longer overwrite the new file.
+  - Backups, config, state and override files are written atomically (temp file + fsync + rename), so a crash never leaves a half-written file.
+- **Patch hit contract**: `optional` patches that miss their expected hit count are recorded as soft failures instead of blocking the whole apply; the two insert-type replacements in #42 gained probes so re-applying does not insert twice.
+- **Desktop / processes (Windows)**:
+  - Process enumeration now uses `|` separators and forces UTF-8 output, fixing the case where the old process survived an asar swap under a Chinese install path.
+  - The helper passes `killApp` only when an exe path is known; a failed swap relaunches the original app and writes a log instead of leaving an empty desktop.
+- **Security hardening**:
+  - Asar extraction verifies each output path stays inside the destination directory; entries outside are skipped with a warning.
+  - Red-team path validation resolves `realpath` for the nearest existing ancestor, closing the symlink escape.
+  - Update checks accept `https` only.
+  - Curl / HTTP replay text strips newlines from headers, cookies and body to prevent injection.
+- **Prompt / runtime hooks**: after the plugin is disabled, `rewriteFn` returns the host's assembled prompt unchanged and the assemble guard is cleared; the runtime cache signature now includes red-team settings, policy and override revision so changes take effect immediately.
+- **Red-team console**: `listEngagements` no longer computes per-row stats by default; vuln lists and reports accept `evidenceLimit` so large evidence no longer slows the panel.
+- **Subagents**: slot reservation now takes effect immediately (`n+1`) and rolls back if the append fails, preventing over-limit dispatch under concurrency.
+- **CLI**: `--apply` exits with code 1 when any item failed, so scripts can detect the failure.
+- **Cleanup**: removed the unreferenced `lib/mnemon-settings.js` plus 13 dead functions / unused imports; dropped the `test/` directory and `test` script — release CI now runs syntax checks only.
+
+# 1.1.86
+
+## 中文
+
+- 版本 **1.1.86**。
+- **Web「应用 → 自动重启」后残留 server 导致 EADDRINUSE 起不来（#197，合并 PR #197）**：
+  - `restart-web.js` 把后台 server 的 pid/url 记到 `$DSH_HOME/dsh-purge/web-server-<port>.json`；`killOldServer` 增加按端口兜底，清掉旧版本留下、没有记录的孤儿。
+  - 新增 `lib/bin-preflight.js`：把回收钩子注入宿主 `bin.js` 顶部（跨平台），在 Cordis 激活、webserver 绑端口之前先回收残留；只杀命令行命中 `@deepseek-ai/dsh/lib/bin.js … web` 的进程。
+  - 重启时打印「后台运行、关窗不会停」，避免把提示符返回误判成程序已退出。
+  - 加固：记录里的 pid 拿不到命令行时，必须仍占着该端口才允许杀，防 PID 复用误杀；杀不掉就保留记录下次再试；杀完等待进程真正退出再绑端口。
+- **桌面端点「应用」换包顺序（#198，合并 PR #198）**：
+  - 先按安装根路径且不含 `--type=` 识别并杀掉 Electron main，再扫安装目录其余进程，避免 host 先死、main 还活着弹「host stopped」。
+  - 挪包失败（asar 仍被占用）时补上 `Start-Process`，把原版应用拉起来并写入 `%TEMP%\dsh-purge-desktop.log`，不再留空桌面。
+- 测试：96/96 通过。
+
+## English
+
+- **1.1.86**.
+- **Stale web server after "Apply → auto restart" caused EADDRINUSE on boot (#197, merged PR #197)**:
+  - `restart-web.js` records the background server pid/url in `$DSH_HOME/dsh-purge/web-server-<port>.json`; `killOldServer` now also reclaims by port, catching orphans left by older versions with no record.
+  - New `lib/bin-preflight.js` injects a reclaim hook at the top of the host `bin.js` (cross-platform) so it runs before Cordis activates and before the webserver binds; only processes whose command line matches `@deepseek-ai/dsh/lib/bin.js … web` are killed.
+  - The restart prints "running in the background; closing this window will NOT stop it" so the returned prompt is not mistaken for an exit.
+  - Hardening: when the recorded pid's command line cannot be read, it is killed only if it still listens on that port (guards against PID reuse); a failed kill keeps the record for the next boot; boot waits for the killed process to actually exit before binding.
+- **Desktop asar swap order (#198, merged PR #198)**:
+  - Electron main is identified by install root plus "no `--type=`" and killed first, then the rest of the install tree is swept, so the host no longer dies while main stays alive showing a "host stopped" dialog.
+  - If the asar move fails (still locked), the original app is relaunched and the reason is appended to `%TEMP%\dsh-purge-desktop.log` instead of leaving an empty desktop.
+- Tests: 96/96 pass.
+
+# 1.1.85
+
+## 中文
+
+- 版本 **1.1.85**。
+- **#196**：修复深色模式下部分按钮白底白字、完全看不清的问题。
+  - 根因：宿主暗色主题把 `--dsw-alias-brand-primary` 解析成近白色（`neutral-bluish-50` `#f9fafb`）。插件里凡是"品牌色作底 + 白字"的按钮（设置页的「应用」「保存注入」、演练台的「保存」「检索」「检测连通性」以及各类主按钮）在暗色下就变成一整块白。
+  - 现在暗色（`body[data-ds-dark-theme]`、`[data-theme="dusk"]`）下主按钮统一用绿色实底 `#3d8f68` + 白字，悬停用更深的 `#347a59`；`-webkit-text-fill-color` 一并显式指定，避免宿主强制白字穿透。
+  - 报告里的步骤序号圆点（`.rt-rep-step-no`）同样改为绿底白字。
+  - 浅色模式表现不变；新增 `test/client-dark-theme.test.js` 静态守护这几条暗色规则。
+- 测试：84/84 通过。
+
+## English
+
+- **1.1.85**.
+- **#196**: fix buttons in dark mode rendering as a solid white block (white text on white background).
+  - Root cause: the host dark theme resolves `--dsw-alias-brand-primary` to a near-white token (`neutral-bluish-50`, `#f9fafb`). Every plugin button that used "brand color as background + white text" (settings **Apply**, **Save injection**, drill console **Save**, **Search**, **Test connectivity**, and other primary buttons) turned into a white block in dark mode.
+  - Primary buttons under dark themes (`body[data-ds-dark-theme]`, `[data-theme="dusk"]`) now use a solid green `#3d8f68` with white text, with `#347a59` on hover; `-webkit-text-fill-color` is set explicitly so host-forced white text cannot leak through.
+  - The report step-number dots (`.rt-rep-step-no`) are switched to the same green/white pair.
+  - Light mode is unchanged; added `test/client-dark-theme.test.js` to guard these dark-mode rules.
+- Tests: 84/84 pass.
+
+# 1.1.84
+
+## 中文
+
+- 版本 **1.1.84**。
+- **尾部锚点与子代理审批接管**（接线 `anchor.js` / `subagent-control.js`）：
+  - 锚点段物理追加到 system prompt 的 sections 数组末尾（waterfall 按数组顺序渲染，order 不参与排序），把身份与格式规则放回 recency 位；已有同名段先滤再追加，不会出现两份。
+  - 锚点规则改为跟随操作者语言：中文请求回中文，锚点本身是英文不算语言指令；删掉写死的英文开头句（这是红队模式回答变英文的直接原因）。
+  - 子会话被宿主写成 `approval/policy = "never"` 时改回 `ask`，并在 `approval/request` 瀑布放行，子代理不再"一直被拒"。
+  - 回滚开关：`anchorMode: "off"`、`subagentControl: false`。
+- **红队模式中文化**：模式名与描述、角色名、五阶段攻击链、25 项计分规则与 POC 分类、技能修复说明、环境适配提示、面板与服务端报错、成果报告与成果复现报告全部回中文。
+- **#194**：desktop 端启动后窗口永不显示。
+  - hung-operator 提示改为按内容变更缓存（home + mtime + 已提交修订号），内容没变不再每轮重算约 23KB。
+  - 增加风暴熔断（10 秒 120 次）与慢调用熔断（1.5 秒触发、30 秒冷却），熔断期直接返回缓存文本，不挂死 desktop host。
+  - 同一次 assemble 的重复改写用 WeakMap 去重。
+  - 新增补丁 **#91**：宿主 `code === null || signal` 静默 resolve 前写一条 `[desktop.hostExit]` 到 `%TEMP%\dsh-purge-desktop.log`，保持不弹框但有据可查。
+- **#188（0.2.1-rc.4 专属部分）**：新增 **#89** 沙箱策略去品牌、**#90** skill-badge 描述中文化，扩展 **#32/#53** 的 rc.3 变体与 marker；三条新补丁均为 optional，宿主没有对应文件时静默跳过。
+- 测试：81/81 通过；新增锚点接线与红队文案测试。
+
+## English
+
+- **1.1.84**.
+- **Tail anchor and subagent approval takeover** (wiring `anchor.js` / `subagent-control.js`):
+  - The anchor section is physically appended to the end of the system-prompt sections array (the waterfall renders by array order, not by `order`), putting identity and format rules back in the recency slot; any existing same-named section is filtered first so there is never a duplicate.
+  - Anchor rules now follow the operator's language: a Chinese request gets a Chinese answer, and the anchor being written in English is not a language instruction. The hard-coded English opener was removed (the direct cause of red-team mode answering in English).
+  - When the host writes `approval/policy = "never"` for a child session, it is flipped back to `ask` and allowed in the `approval/request` waterfall, so subagents are no longer refused every time.
+  - Rollback switches: `anchorMode: "off"`, `subagentControl: false`.
+- **Red-team mode localized to Chinese**: mode name and description, role names, the five-stage attack chain, the 25-item scoring rules and POC categories, skill-fix guidance, environment-adaptation hints, panel and server messages, and both the results report and the replay report.
+- **#194**: desktop window never appears after launch.
+  - The hung-operator prompt is now cached by content change (home + mtime + committed revision); an unchanged prompt is no longer rebuilt (~23KB) on every refresh.
+  - Storm breaker (120 calls / 10s) and slow-call breaker (trip at 1.5s, 30s cooldown) return the cached text instead of stalling the desktop host.
+  - Duplicate rewrites within the same assemble call are deduped with a WeakMap.
+  - New patch **#91**: before the host silently resolves `code === null || signal`, append a `[desktop.hostExit]` line to `%TEMP%\dsh-purge-desktop.log` — still no dialog, but no longer invisible.
+- **#188 (0.2.1-rc.4-specific parts)**: new **#89** sandbox-policy brand neutralization and **#90** skill-badge description localization, plus rc.3 variants and markers for **#32/#53**; all three new patches are optional and are skipped silently when the host has no matching file.
+- Tests: 81/81 pass; new coverage for anchor wiring and red-team copy.
+
+# 1.1.83
+
+## 中文
+
+- 版本 **1.1.83**。修复 bug，修复稳定性。
+- **#185**：修复 pnpm 11（DSH 内置 11.2.2）下 `pnpm install` 因 `allowBuilds` 崩溃的问题。
+  - 之前 profile 的 `pnpm-workspace.yaml` 会写入 `dsh-purge@https://...` 这类 URL 键，pnpm 把它当版本联合解析，直接报 `[ERR_PNPM_INVALID_VERSION_UNION] Invalid versions union`。
+  - 现在只写裸包名 `dsh-purge`：pnpm 的 `allowBuilds` 本来就按包名匹配，tarball / git / registry 三种安装形态都放行。
+  - 自愈加强：所有 `dsh-purge@*` 历史键（URL 键、旧截断键 `dsh-purge@https`、`@1.1.81` 之类版本键）一律清掉，只保留裸包名；非 dsh-purge 的键原样保留。
+- **#191**：修复 macOS DSH Desktop（0.2.1-rc.4）启动崩溃 `failed to parse overlay .../cordis.patch.yml`。
+  - 宿主生成的 profile 层 `cordis.patch.yml` 可能整体只有一个空 flow 序列 `[]`，那本身就是一个完整 YAML 文档；再往文件尾追加 `- insert:` 会变成第二个文档，宿主解析直接失败。
+  - 现在写之前先判断数据部分形态：空 flow 序列（`[]`，可带 `---` 前缀）→ **替换** `[]` 整行而不是追加；空文件 / 只有注释 → 直接写 insert 块；正常块序列 → 沿用原来的追加行为。
+  - 非空 flow 序列（宿主或用户自己的内容）认不准就不动，返回 `{ ok: false, wrote: false }`，宁可留着也不写坏。
+
+## English
+
+- **1.1.83**. Bug fixes and stability.
+- **#185**: fix `pnpm install` crashing under pnpm 11 (11.2.2, bundled with DSH) because of `allowBuilds`.
+  - The profile `pnpm-workspace.yaml` used to get a `dsh-purge@https://...` URL key, which pnpm parses as a version union and rejects with `[ERR_PNPM_INVALID_VERSION_UNION] Invalid versions union`.
+  - Now only the bare package name `dsh-purge` is written: pnpm matches `allowBuilds` by package name, so tarball / git / registry installs are all allowed.
+  - Stronger self-healing: every `dsh-purge@*` legacy key (URL keys, truncated `dsh-purge@https`, `@1.1.81`-style version keys) is dropped and only the bare name is kept; non-dsh-purge keys are preserved as-is.
+- **#191**: fix the macOS DSH Desktop (0.2.1-rc.4) startup crash `failed to parse overlay .../cordis.patch.yml`.
+  - The host-generated profile `cordis.patch.yml` may consist of a single empty flow sequence `[]`, which is already a complete YAML document; appending `- insert:` after it creates a second document and the host fails to parse it.
+  - The data shape is now detected before writing: an empty flow sequence (`[]`, optionally `---`-prefixed) → **replace** the `[]` line instead of appending; empty file / comments only → write the insert block; a normal block sequence → the previous append behaviour is kept.
+  - A non-empty flow sequence (host or user content) is left alone and returns `{ ok: false, wrote: false }` — better to skip than to write something broken.
+
+# 1.1.82
+
+## 中文
+
+- 版本 **1.1.82**。修复 bug，修复稳定性。
+- **#180**：修复 profile 的 `pnpm-workspace.yaml` `allowBuilds` 被反复写坏（`dsh-purge@https: true` 畸形键 → `ERR_PNPM_INVALID_VERSION_UNION`，重复键 → `duplicated mapping key`）。
+  - URL 键解析不再被冒号截断；写回含 `://` 的键自动加引号。
+  - 重写只保留精确等于期望键的 `dsh-purge@*`，旧污染键（畸形的、过期的版本/commit URL）自动清掉，不用手工修。
+  - 期望键优先从 profile 的 `pnpm-lock.yaml` 读实际解析的 tarball URL（固定 commit 安装也不再有双 URL 键），读不到才退回 `package.json`。
+  - 重写结果先过最小 YAML 校验（键不重复、round-trip 无损），不过就不写盘；健康文件零写入，启动不再反复重写。
+
+## English
+
+- **1.1.82**. Bug fixes and stability.
+- **#180**: stop rewriting the profile `pnpm-workspace.yaml` `allowBuilds` into garbage (`dsh-purge@https: true` malformed key → `ERR_PNPM_INVALID_VERSION_UNION`; duplicated keys → `duplicated mapping key`).
+  - URL keys no longer truncate at the first colon; keys containing `://` are written back quoted.
+  - Rewrites keep only `dsh-purge@*` keys exactly equal to the wanted set; stale polluted keys (malformed, old version/commit URLs) self-heal away on the next ensure.
+  - The wanted key prefers the tarball URL actually resolved in the profile `pnpm-lock.yaml` (fixed-commit installs no longer get a duplicate URL key); falls back to `package.json`.
+  - Rewritten output passes a minimal YAML check first (no duplicate keys, lossless round-trip); healthy files are never written again, so boot no longer rewrites each run.
+
+# 1.1.81
+
+## 中文
+
+- 版本 **1.1.81**。修复 bug，修复稳定性。
+- **#174**：识别 DSH NEXT 社区桌面（路径、进程、快捷方式、密封 asar）。`DSH_SURFACE=web` 也不再误报；不把任意 `app.asar` 当桌面。
+- **#175**：补 ip / 计分 / settle 单测，删草稿文档和 `.bak`。`npm test` 23 条全过。
+- **#171 / #173**：zip 目录条目和 skills `fs` 导入已在 1.1.80，本版用单测锁住。
+
+## English
+
+- **1.1.81**. Bug fixes and stability.
+- **#174**: detect DSH NEXT desktop (paths, process, shortcuts, sealed asar). Still desktop when `DSH_SURFACE=web`. A random `app.asar` is not treated as the host.
+- **#175**: add ip / score / settle tests; drop draft docs and `.bak`. `npm test` is 23/23 green.
+- **#171 / #173**: zip directory entries and the skills `fs` import shipped in 1.1.80; this release locks them with tests.
+
+# 1.1.80
+
+## 中文
+
+- 版本 **1.1.80**。修复 bug，修复稳定性。
+- **#168**：pnpm 12 的 `allowBuilds` 把 `dsh-purge@codeload...` 也写成 `true`，装别的插件不再留下 `set this to true or false`。
+- **#169**：芯片 / 应用按钮强制系统字体和实色字，不再被宿主图标字体吃掉。
+- **#170**：纯 Node 解 zip 时目录条目建目录，不再写成同名空文件导致 EEXIST。
+- **#172**：`lib/skills.js` 补上 `fs`，#54 软链重叠守卫重新生效。
+- **#176**：写清 **不支持 DSH 0.2.1-rc.3 及更新的 rc**，请退回 **0.2.1-rc.2**。对不上的补丁待应用或跳过，不乱改文件。
+
+## English
+
+- **1.1.80**. Bug fixes and stability.
+- **#168**: pnpm 12 `allowBuilds` also sets `dsh-purge@codeload...` to `true`, so installing other plugins no longer leaves `set this to true or false`.
+- **#169**: chip / Apply buttons force a system font and solid text color so the host icon font cannot hide the label.
+- **#170**: Node zip fallback creates directories for directory entries instead of empty files (no more EEXIST).
+- **#172**: import `fs` in `lib/skills.js` so the #54 symlink overlap guard works again.
+- **#176**: **DSH 0.2.1-rc.3 and newer RCs are not supported.** Stay on **0.2.1-rc.2**. Unmatched patches stay pending or skipped.
+
 # 1.1.79
 
 ## 中文
